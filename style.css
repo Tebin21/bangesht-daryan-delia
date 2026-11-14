@@ -503,11 +503,9 @@ main.site.is-revealed {
 .invitation-card__img {
   position: relative;
   display: block;
-  width: min(88vw, 440px);
+  width: min(88vw, 390px);
   height: auto;
   aspect-ratio: 1080 / 1440;
-  max-height: 520px;
-  object-fit: cover;
   border-radius: clamp(12px, 3vw, 20px);
   box-shadow:
     0 16px 44px rgba(0, 0, 0, 0.88),
