@@ -1,7 +1,7 @@
 'use strict';
 
 /* ==========================================================================
-   Luxury Kurdish Engagement Invitation — ژیر ❤ ژینه
+   Luxury Kurdish Engagement Invitation — داریان ❤ دەلیا
    Sequencing: ReducedMotionGuard -> AssetGate -> VideoGateController ->
    RevealAndPetalBurst -> (ScrollRevealEngine + CountdownEngine +
    CalendarGenerator start together). CustomCursor and MusicPlayer init
@@ -24,237 +24,106 @@ const ReducedMotionGuard = {
   }
 };
 
-/* --- Progress UI: drives the loading-overlay ring + percentage text.
-   Smooths every incoming target (real byte progress, never invented) toward
-   its displayed value via rAF, so bursty network chunks still read as a
-   fluid sweep instead of stepping visibly. --- */
-const ProgressUI = {
-  RADIUS: 44,
-  TAU: 140, // ms time-constant for the exponential ease — convergence speed
-            // stays consistent regardless of the browser's actual frame rate.
+/* --- Intro Gate Controller:
+   6-second gold perimeter border loader tracing around all 4 sides of the screen
+   with blurred couple photo backdrop, "بانگهێشتنامە", and percentage counter.
+   Single tap anywhere immediately advances. --- */
+const IntroGateController = {
+  DURATION: 6000,
+  hasEnded: false,
+  len: 0,
 
-  target: 0,
-  shown: 0,
-  raf: null,
-  lastTime: 0,
-  running: false,
+  init(onEnded) {
+    this.gate = document.getElementById('intro-gate');
+    this.svg = document.querySelector('.intro-gate__border-svg');
+    this.track = document.getElementById('intro-gate__track');
+    this.bar = document.getElementById('intro-gate__bar');
+    this.percentEl = document.getElementById('intro-gate__percent');
+    this.onEnded = onEnded || (() => {});
 
-  init() {
-    this.ring = document.getElementById('loading-overlay__ring');
-    this.percentEl = document.getElementById('loading-overlay__percent');
-    this.circumference = 2 * Math.PI * this.RADIUS;
-    if (this.ring) {
-      this.ring.style.strokeDasharray = String(this.circumference);
-      this.ring.style.strokeDashoffset = String(this.circumference);
-    }
-    this.running = true;
-    this.lastTime = performance.now();
-    this.raf = requestAnimationFrame((t) => this._tick(t));
-  },
-
-  setTarget(percent) {
-    // Progress only ever moves forward — several assets report concurrently
-    // and their combined weighted total can jitter slightly between ticks.
-    this.target = Math.max(this.target, Math.min(100, percent));
-  },
-
-  finish() {
-    this.target = 100;
-  },
-
-  _tick(now) {
-    if (!this.running) return;
-    const dt = now - this.lastTime;
-    this.lastTime = now;
-    const alpha = 1 - Math.exp(-dt / this.TAU);
-    this.shown += (this.target - this.shown) * alpha;
-    if (Math.abs(this.target - this.shown) < 0.05) this.shown = this.target;
-    const rounded = Math.round(this.shown);
-    if (this.percentEl) this.percentEl.textContent = rounded + '%';
-    if (this.ring) {
-      this.ring.style.strokeDashoffset = String(this.circumference * (1 - this.shown / 100));
-    }
-    // Self-terminate once fully converged on the final 100% — nothing left
-    // to animate, so no external timer is needed (or can prematurely cut
-    // the sweep short on a slow/throttled frame rate).
-    if (this.shown >= this.target && this.target >= 100) {
-      this.running = false;
+    if (!this.gate || !this.bar) {
+      this.onEnded();
       return;
     }
-    this.raf = requestAnimationFrame((t) => this._tick(t));
-  }
-};
 
-/* --- Asset gate: resolves once font, hero image, intro video and background
-   music are all truly loaded. Video/audio progress is tracked from actual
-   bytes received over the network (never a fake timer), weighted by their
-   typical relative size so the combined percentage feels proportional. --- */
-const AssetGate = {
-  WEIGHTS: { font: 0.05, image: 0.10, video: 0.55, audio: 0.30 },
-  progress: { font: 0, image: 0, video: 0, audio: 0 },
+    this._updateDimensions();
 
-  async whenReady(onProgress) {
-    this.onProgress = onProgress || (() => {});
-    const ready = Promise.all([
-      this._fontReady(),
-      this._imageReady(),
-      this._videoReady(),
-      this._audioReady()
-    ]);
-    // Failsafe: never permanently strand a visitor over one broken/stalled asset.
-    await Promise.race([
-      ready,
-      delay(20000).then(() => console.warn('AssetGate: 20s failsafe reached, revealing anyway'))
-    ]);
-  },
-
-  _report(key, value) {
-    this.progress[key] = value;
-    const total = Object.keys(this.WEIGHTS).reduce(
-      (sum, k) => sum + this.WEIGHTS[k] * this.progress[k], 0
-    );
-    this.onProgress(total * 100);
-  },
-
-  async _fontReady() {
-    try {
-      await document.fonts.load('300 16px "XoshnusKurdish"');
-      await document.fonts.ready;
-    } catch (e) {
-      /* Font Loading API unsupported/failed — proceed, @font-face swap still applies. */
-    }
-    this._report('font', 1);
-  },
-
-  async _imageReady() {
-    const img = document.getElementById('invitation-image');
-    if (!img) { this._report('image', 1); return; }
-    try {
-      if (img.decode) {
-        await img.decode();
-      } else if (!img.complete) {
-        await new Promise((resolve) => {
-          img.addEventListener('load', resolve, { once: true });
-          img.addEventListener('error', resolve, { once: true });
-        });
-      }
-    } catch (e) {
-      /* decode() can reject in rare cases — non-fatal, image still renders. */
-    }
-    this._report('image', 1);
-  },
-
-  // Streams the response body, reporting real received-bytes / total-bytes
-  // progress on every chunk. Falls back to an indeterminate 0->1 jump only
-  // when Content-Length isn't available (progress still reflects reality —
-  // it just can't be granular without a known total).
-  async _fetchWithProgress(url, key) {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(url + ' fetch failed: ' + response.status);
-    const total = Number(response.headers.get('content-length')) || 0;
-    if (!response.body || !total) {
-      const blob = await response.blob();
-      this._report(key, 1);
-      return blob;
-    }
-    const reader = response.body.getReader();
-    const chunks = [];
-    let received = 0;
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      chunks.push(value);
-      received += value.length;
-      this._report(key, Math.min(1, received / total));
-    }
-    this._report(key, 1);
-    return new Blob(chunks);
-  },
-
-  async _videoReady() {
-    const video = document.getElementById('intro-video');
-    if (!video) { this._report('video', 1); return; }
-    try {
-      const blob = await this._fetchWithProgress('assets/videos/vivi.mp4', 'video');
-      const url = URL.createObjectURL(blob);
-      video.dataset.blobUrl = url;
-      video.src = url;
-      await new Promise((resolve, reject) => {
-        video.addEventListener('loadedmetadata', resolve, { once: true });
-        video.addEventListener('error', reject, { once: true });
-      });
-    } catch (e) {
-      // Fallback for the file:// double-click case (fetch can throw there) or a network hiccup.
-      video.preload = 'auto';
-      video.src = 'assets/videos/vivi.mp4';
-      await new Promise((resolve) => {
-        video.addEventListener('loadeddata', resolve, { once: true });
-        video.addEventListener('error', resolve, { once: true });
-      });
-      this._report('video', 1);
-    }
-  },
-
-  async _audioReady() {
-    const audio = document.getElementById('bg-music');
-    if (!audio) { this._report('audio', 1); return; }
-    try {
-      const blob = await this._fetchWithProgress('assets/audio/music.mp3', 'audio');
-      const url = URL.createObjectURL(blob);
-      audio.dataset.blobUrl = url;
-      audio.src = url;
-      await new Promise((resolve, reject) => {
-        audio.addEventListener('loadedmetadata', resolve, { once: true });
-        audio.addEventListener('error', reject, { once: true });
-      });
-    } catch (e) {
-      audio.src = 'assets/audio/music.mp3';
-      await new Promise((resolve) => {
-        audio.addEventListener('loadeddata', resolve, { once: true });
-        audio.addEventListener('error', resolve, { once: true });
-      });
-      this._report('audio', 1);
-    }
-  }
-};
-
-/* --- Video gate: single tap starts the clip; no skip, no controls --- */
-const VideoGateController = {
-  init(onEnded) {
-    this.gate = document.getElementById('video-gate');
-    this.video = document.getElementById('intro-video');
-    this.playBtn = document.getElementById('video-gate__play');
-    if (!this.gate || !this.video || !this.playBtn) return;
-
-    // Video carries no audio of its own — the music track is the only sound.
-    this.video.muted = true;
-    this.video.defaultMuted = true;
-
-    const start = () => {
-      // Same tap starts both — music must begin the instant the video does.
-      MusicPlayer.startMusic();
-      this.video.play()
-        .then(() => this.gate.classList.add('is-playing'))
-        .catch(() => {
-          /* Rejected (e.g. no real gesture yet) — button stays visible/clickable to retry. */
-        });
-    };
-    this.playBtn.addEventListener('click', start);
-
-    this.video.addEventListener('ended', () => {
+    const finish = () => {
+      if (this.hasEnded) return;
+      this.hasEnded = true;
+      window.removeEventListener('resize', this._onResize);
       this.gate.classList.add('is-hidden');
-      if (this.video.dataset.blobUrl) {
-        URL.revokeObjectURL(this.video.dataset.blobUrl);
-      }
-      onEnded();
-      // The gate is single-use and never shown again — merely hiding it
-      // (opacity/visibility) leaves its several infinite CSS animations
-      // (ring glow, shimmer, play-button pulse) still ticking in the
-      // background, including paint-inducing filter/background-position
-      // ones, for the rest of the session. Remove it outright once its own
-      // fade-out finishes so nothing keeps animating off-screen forever.
+      this.onEnded();
       this.gate.addEventListener('transitionend', () => this.gate.remove(), { once: true });
-    }, { once: true });
+      setTimeout(() => {
+        if (this.gate && this.gate.parentNode) this.gate.remove();
+      }, 1200);
+    };
+
+    this.finish = finish;
+
+    // Single tap anywhere advances immediately
+    this.gate.addEventListener('click', finish);
+
+    // Keep dimensions responsive on window resize / orientation change
+    this._onResize = () => this._updateDimensions();
+    window.addEventListener('resize', this._onResize);
+
+    // Preload hero image in background while 6s animation runs
+    AssetGate.preload();
+
+    // Start 6-second progress loop
+    const startTime = performance.now();
+    const tick = (now) => {
+      if (this.hasEnded) return;
+      const elapsed = now - startTime;
+      const progress = Math.min(1, elapsed / this.DURATION);
+      if (this.len > 0) {
+        const offset = this.len * (1 - progress);
+        this.bar.style.strokeDashoffset = String(offset);
+      }
+      if (this.percentEl) {
+        this.percentEl.textContent = Math.round(progress * 100) + '%';
+      }
+      if (progress < 1) {
+        requestAnimationFrame(tick);
+      } else {
+        setTimeout(finish, 280);
+      }
+    };
+    requestAnimationFrame(tick);
+  },
+
+  _updateDimensions() {
+    if (!this.svg || !this.track || !this.bar) return;
+    const inset = 3;
+    const w = Math.max(0, this.svg.clientWidth - inset * 2);
+    const h = Math.max(0, this.svg.clientHeight - inset * 2);
+    this.track.setAttribute('x', String(inset));
+    this.track.setAttribute('y', String(inset));
+    this.track.setAttribute('width', String(w));
+    this.track.setAttribute('height', String(h));
+    this.bar.setAttribute('x', String(inset));
+    this.bar.setAttribute('y', String(inset));
+    this.bar.setAttribute('width', String(w));
+    this.bar.setAttribute('height', String(h));
+    try {
+      this.len = this.bar.getTotalLength();
+      this.bar.style.strokeDasharray = String(this.len);
+    } catch (e) {
+      this.len = 2 * (w + h);
+      this.bar.style.strokeDasharray = String(this.len);
+    }
+  }
+};
+
+const AssetGate = {
+  preload() {
+    try { document.fonts.ready; } catch (e) {}
+    const img = document.getElementById('invitation-image');
+    if (img && img.decode) {
+      img.decode().catch(() => {});
+    }
   }
 };
 
@@ -319,9 +188,9 @@ const ScrollRevealEngine = {
   }
 };
 
-/* --- Countdown to 2026-11-11 00:00 Asia/Baghdad (fixed UTC+3, no DST) --- */
+/* --- Countdown to 2026-11-21 17:00 Asia/Baghdad (fixed UTC+3, no DST) --- */
 const CountdownEngine = {
-  EVENT_DATE: new Date('2026-11-11T00:00:00+03:00'),
+  EVENT_DATE: new Date('2026-11-21T17:00:00+03:00'),
   intervalId: null,
 
   init() {
@@ -409,7 +278,7 @@ const CountdownEngine = {
 /* --- November 2026 calendar grid, computed (never hand-hardcoded) --- */
 const CalendarGenerator = {
   WEEKDAYS: ['یەکشەممە', 'دووشەممە', 'سێشەممە', 'چوارشەممە', 'پێنجشەممە', 'هەینی', 'شەممە'],
-  TARGET_DAY: 11,
+  TARGET_DAY: 21,
 
   init() {
     const weekdaysEl = document.getElementById('calendar-weekdays');
@@ -509,94 +378,6 @@ const CustomCursor = {
   }
 };
 
-/* --- Single shared <audio> instance: gesture-started with the intro video,
-   fades in once, survives the video->main transition untouched, and is
-   otherwise fully owned by the floating toggle button. --- */
-const MusicPlayer = {
-  FADE_MS: 1000,
-
-  started: false,   // play() has been issued at least once (gesture spent)
-  fadeRaf: null,
-
-  init() {
-    this.btn = document.getElementById('music-toggle');
-    this.audio = document.getElementById('bg-music');
-    if (!this.btn || !this.audio) return;
-    this.icon = this.btn.querySelector('use');
-
-    this.audio.addEventListener('error', () => {
-      this.started = false;
-      this._setState(false);
-    });
-
-    this.btn.addEventListener('click', () => {
-      if (this.audio.paused) {
-        // Not started yet (e.g. the video-gate gesture's play() was blocked) —
-        // this click is a fresh user gesture, so start it properly with fade-in.
-        this.started ? this._resume() : this.startMusic();
-      } else {
-        this._cancelFade();
-        this.audio.pause();
-        this._setState(false);
-      }
-    });
-  },
-
-  // Called once, from the same tap/click that starts the intro video.
-  startMusic() {
-    if (this.started || !this.audio) return;
-    this.started = true;
-    this.audio.volume = 0;
-    this.audio.play()
-      .then(() => {
-        this._setState(true);
-        this._fadeIn();
-      })
-      .catch(() => {
-        // Autoplay blocked — allow the floating button's own click (a real
-        // gesture) to retry via startMusic() instead of getting stuck.
-        this.started = false;
-        this._setState(false);
-      });
-  },
-
-  _resume() {
-    this.audio.volume = 1;
-    this.audio.play()
-      .then(() => this._setState(true))
-      .catch(() => this._setState(false));
-  },
-
-  _fadeIn() {
-    this._cancelFade();
-    const start = performance.now();
-    const step = (now) => {
-      const t = Math.min(1, (now - start) / this.FADE_MS);
-      this.audio.volume = t;
-      if (t < 1) {
-        this.fadeRaf = requestAnimationFrame(step);
-      } else {
-        this.fadeRaf = null;
-      }
-    };
-    this.fadeRaf = requestAnimationFrame(step);
-  },
-
-  _cancelFade() {
-    if (this.fadeRaf) {
-      cancelAnimationFrame(this.fadeRaf);
-      this.fadeRaf = null;
-    }
-  },
-
-  _setState(playing) {
-    this.btn.classList.toggle('is-playing', playing);
-    this.btn.setAttribute('aria-pressed', String(playing));
-    this.btn.setAttribute('aria-label', playing ? 'وەستاندنی مۆسیقا' : 'لێدانی مۆسیقا');
-    if (this.icon) this.icon.setAttribute('href', playing ? '#icon-pause' : '#icon-play');
-  }
-};
-
 /* --- Final "I'll be there" CTA: fades the button, then runs a 5s
    celebration (flowers + petals falling again into the existing
    petal-burst layer) alongside a centered frosted-glass thank-you panel.
@@ -611,27 +392,42 @@ const EndingCelebration = {
     this.layer = document.getElementById('petal-burst-layer');
     this.message = document.getElementById('ending-message');
     if (!this.btn || !this.layer || !this.message) return;
-    this.btn.addEventListener('click', () => this.trigger(), { once: true });
+    this.btn.addEventListener('click', () => this.trigger());
   },
 
   trigger() {
+    if (this.isRunning) return;
+    this.isRunning = true;
     this.btn.classList.add('is-fading');
-    setTimeout(() => { this.btn.hidden = true; }, 600);
 
     this.showMessage();
     this.runFall();
   },
 
   showMessage() {
-    // Panel already exists pre-built (see .ending-message in style.css) with its
-    // backdrop-filter layer pre-warmed — this only flips opacity, so the glass,
-    // border, glow and text all composite together in the same frame.
+    document.body.classList.add('has-ending-modal');
     this.message.setAttribute('aria-hidden', 'false');
     this.message.classList.add('is-visible');
-    setTimeout(() => {
+
+    const hide = () => {
       this.message.classList.remove('is-visible');
       this.message.setAttribute('aria-hidden', 'true');
-    }, this.DURATION_MS);
+      document.body.classList.remove('has-ending-modal');
+      // Return button back to normal as it was after 5 seconds
+      setTimeout(() => {
+        if (this.btn) this.btn.classList.remove('is-fading');
+        this.isRunning = false;
+      }, 350);
+    };
+
+    if (this.hideTimeout) clearTimeout(this.hideTimeout);
+    this.hideTimeout = setTimeout(hide, this.DURATION_MS);
+
+    // Tap anywhere on backdrop to dismiss immediately
+    this.message.addEventListener('click', () => {
+      clearTimeout(this.hideTimeout);
+      hide();
+    }, { once: true });
   },
 
   runFall() {
@@ -700,17 +496,7 @@ const EndingCelebration = {
 document.addEventListener('DOMContentLoaded', () => {
   ReducedMotionGuard.init();
   CustomCursor.init();
-  MusicPlayer.init();
   EndingCelebration.init();
 
-  VideoGateController.init(() => RevealAndPetalBurst.run());
-
-  ProgressUI.init();
-  AssetGate.whenReady((percent) => ProgressUI.setTarget(percent)).then(() => {
-    ProgressUI.finish();
-    const overlay = document.getElementById('loading-overlay');
-    const videoGate = document.getElementById('video-gate');
-    if (overlay) overlay.classList.add('is-hidden');
-    if (videoGate) videoGate.classList.add('is-ready');
-  });
+  IntroGateController.init(() => RevealAndPetalBurst.run());
 });

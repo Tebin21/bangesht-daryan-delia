@@ -31,12 +31,15 @@ h1, h2, p { margin: 0; }
 
 /* --- Design tokens --- */
 :root {
-  /* Maroon ramp (brand = 700) */
-  --maroon-900: #3A0501;
-  --maroon-800: #4A0501;
-  --maroon-700: #7C0902; /* brand */
-  --maroon-600: #9C0F08;
-  --maroon-500: #B71C13;
+  /* Soft, delicate, luminous rose-maroon ramp */
+  --maroon-950: #420a0e;
+  --maroon-900: #5c1219; /* softened from #3A0501: elegant warm wine */
+  --maroon-800: #781822; /* softened from #4A0501: delicate crimson */
+  --maroon-700: #98202c; /* lightened brand: vibrant soft rose-red */
+  --maroon-600: #b52c39;
+  --maroon-500: #d43b49;
+  --maroon-400: #ec5260;
+  --rose-glow:   #ff7080;
 
   /* Gold ramp */
   --gold-500: #C9A646;
@@ -48,15 +51,17 @@ h1, h2, p { margin: 0; }
   --cream-050: #FFFDF9;
   --cream-100: #FBF6EE;
   --ink-900: #1A0605;
-  --on-dark: #F6ECDD;
+  --on-dark: #FBF4EA;
+  --on-dark-dim: rgba(251, 244, 234, 0.82);
 
-  /* Glass */
-  --glass-bg: linear-gradient(155deg, rgba(255,255,255,.10), rgba(255,255,255,.03));
-  --glass-border: rgba(212,185,106,.35);
-  --glass-blur: 18px;
-  --shadow-soft: 0 4px 20px rgba(0,0,0,.25);
-  --shadow-elevated: 0 20px 60px rgba(0,0,0,.40);
-  --shadow-gold-glow: 0 0 24px rgba(201,166,70,.35);
+  /* Glass — softer, more luminous frosted rose-tint */
+  --glass-bg: linear-gradient(155deg, rgba(255,255,255,.14), rgba(255,255,255,.04)),
+              linear-gradient(165deg, rgba(152,32,44,.32), rgba(92,18,25,.48));
+  --glass-border: rgba(212,185,106,.42);
+  --glass-blur: 22px;
+  --shadow-soft: 0 4px 20px rgba(0,0,0,.22);
+  --shadow-elevated: 0 18px 50px rgba(0,0,0,.35);
+  --shadow-gold-glow: 0 0 28px rgba(201,166,70,.4);
 
   /* Radii */
   --radius-sm: 8px;
@@ -147,190 +152,163 @@ html, body { overflow-x: hidden; }
 }
 
 /* ==========================================================================
-   Loading overlay — sits directly above the intro video inside the video
-   gate (the video's poster frame stays visible behind it). Semi-transparent
-   dark-maroon glass with a heavy blur, a luxury glowing ring showing real
-   preload progress (0-100%, never faked), and the Kurdish waiting line
-   beneath it. Fades out as soon as every asset (font, image, video, music)
-   is truly ready, revealing the tap-to-play button underneath.
+   Intro Gate (Opening screen: blurred couple backdrop + 6s perimeter loader)
    ========================================================================== */
-.loading-overlay {
+.intro-gate {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-videogate);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  cursor: pointer;
+  background: #3e0c12;
+  contain: layout style paint;
+  transition: opacity 1s var(--ease-luxury), visibility 1s var(--ease-luxury), transform 1s var(--ease-luxury);
+}
+.intro-gate.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  transform: scale(1.04);
+  pointer-events: none;
+}
+
+/* Blurred couple photo backdrop — soft, delicate, and bright */
+.intro-gate__backdrop {
+  position: absolute;
+  inset: -32px;
+  background-image: url("assets/images/daryan-720.jpg");
+  background-size: cover;
+  background-position: center;
+  filter: blur(24px) brightness(0.72) saturate(1.3);
+  transform: scale(1.08);
+  pointer-events: none;
+}
+
+/* Soft delicate rose vignette */
+.intro-gate__overlay {
   position: absolute;
   inset: 0;
+  background: radial-gradient(ellipse at center, rgba(165, 36, 46, 0.25) 0%, rgba(104, 20, 28, 0.55) 60%, rgba(58, 10, 14, 0.82) 100%);
+  pointer-events: none;
+}
+
+/* Corner flourishes at 4 corners of the rectangular frame */
+.intro-gate__corners {
+  position: absolute;
+  inset: clamp(14px, 3.5vw, 28px);
+  pointer-events: none;
+  z-index: 2;
+}
+.intro-gate__corner {
+  position: absolute;
+  width: clamp(32px, 8vw, 48px);
+  height: clamp(32px, 8vw, 48px);
+  color: var(--gold-300);
+  opacity: .8;
+}
+.intro-gate__corner svg { width: 100%; height: 100%; }
+.intro-gate__corner--tl { top: 0; left: 0; }
+.intro-gate__corner--tr { top: 0; right: 0; transform: scaleX(-1); }
+.intro-gate__corner--bl { bottom: 0; left: 0; transform: scaleY(-1); }
+.intro-gate__corner--br { bottom: 0; right: 0; transform: scale(-1, -1); }
+
+/* Rectangular SVG border loader that traces the perimeter */
+.intro-gate__border-svg {
+  position: absolute;
+  inset: clamp(14px, 3.5vw, 28px);
+  width: calc(100% - 2 * clamp(14px, 3.5vw, 28px));
+  height: calc(100% - 2 * clamp(14px, 3.5vw, 28px));
+  pointer-events: none;
+  z-index: 2;
+  overflow: visible;
+}
+.intro-gate__track {
+  fill: none;
+  stroke: rgba(212, 185, 106, 0.22);
+  stroke-width: 2.5;
+}
+.intro-gate__bar {
+  fill: none;
+  stroke: url(#gold-border-grad);
+  stroke-width: 4;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.08s linear;
+}
+
+/* Center content */
+.intro-gate__center {
+  position: relative;
+  z-index: 3;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(1.5rem, 5vh, 2.5rem);
-  padding: 1.5rem;
-  background: linear-gradient(160deg, rgba(58,5,1,.86), rgba(15,2,1,.82));
-  backdrop-filter: blur(22px) saturate(120%);
-  -webkit-backdrop-filter: blur(22px) saturate(120%);
-  will-change: opacity;
-  contain: layout style;
-  transition: opacity var(--dur-slow) var(--ease-luxury), visibility var(--dur-slow) var(--ease-luxury);
+  text-align: center;
+  padding: clamp(1.5rem, 5vw, 2.5rem);
+  max-width: min(90vw, 460px);
 }
-@supports not (backdrop-filter: blur(1px)) {
-  .loading-overlay { background: rgba(30,3,1,.92); }
+.intro-gate__ornament {
+  width: min(190px, 65%);
+  height: 28px;
+  color: var(--gold-400);
+  opacity: .85;
 }
-.loading-overlay.is-hidden {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
+.intro-gate__ornament--bottom {
+  margin-top: .75rem;
 }
-
-/* --- Ring: real progress via stroke-dashoffset, plus a slow breathing glow --- */
-.loading-overlay__ring-wrap {
-  position: relative;
-  width: min(32vw, 128px);
-  aspect-ratio: 1;
-  display: grid;
-  place-items: center;
-  animation: loading-breathe 3.2s ease-in-out infinite;
+.intro-gate__title {
+  font-family: var(--font-primary);
+  font-size: clamp(2.5rem, 1.8rem + 3.8vw, 4.4rem);
+  font-weight: 700;
+  line-height: 1.25;
+  margin: 0.5rem 0 0.25rem 0;
+  letter-spacing: .02em;
+  background: linear-gradient(110deg, #d4b96a 0%, #fffbf0 35%, #e6d5a8 50%, #c9a646 75%, #8a6a28 100%);
+  background-size: 200% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 10px rgba(0,0,0,.7)) drop-shadow(0 0 25px rgba(230,197,120,.45));
+  animation: intro-title-glow 4s ease-in-out infinite;
 }
-.loading-overlay__ring-wrap::before {
-  content: '';
-  position: absolute;
-  inset: -34%;
-  border-radius: 50%;
-  background: radial-gradient(circle, rgba(230,213,168,.26), transparent 70%);
-  filter: blur(8px);
-  pointer-events: none;
+@keyframes intro-title-glow {
+  0%, 100% { filter: drop-shadow(0 2px 10px rgba(0,0,0,.7)) drop-shadow(0 0 20px rgba(230,197,120,.35)); }
+  50%      { filter: drop-shadow(0 2px 10px rgba(0,0,0,.7)) drop-shadow(0 0 35px rgba(230,197,120,.65)); }
 }
-.loading-overlay__ring-svg {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  transform: rotate(-90deg);
-  filter: drop-shadow(0 0 8px rgba(201,166,70,.5));
+.intro-gate__names {
+  font-family: var(--font-primary);
+  font-size: clamp(1.2rem, 1rem + 1vw, 1.7rem);
+  color: #fff9ea;
+  margin: 0.25rem 0 0.5rem 0;
+  opacity: 0.95;
+  text-shadow: 0 2px 14px rgba(0,0,0,.7), 0 0 18px rgba(201,166,70,.35);
 }
-.loading-overlay__ring-bg {
-  fill: none;
-  stroke: rgba(230,213,168,.16);
-  stroke-width: 3;
+.intro-gate__heart {
+  color: #e63946;
+  filter: drop-shadow(0 0 8px rgba(230,57,70,.6));
+  display: inline-block;
+  transform: translateY(-1px);
 }
-.loading-overlay__ring {
-  fill: none;
-  stroke: var(--gold-400);
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-dasharray: 276.5;
-  stroke-dashoffset: 276.5;
-  transition: stroke-dashoffset .2s linear;
-}
-@keyframes loading-breathe {
-  0%, 100% { filter: brightness(1); }
-  50%      { filter: brightness(1.25); }
-}
-.loading-overlay__percent {
-  position: relative;
+.intro-gate__percent {
+  font-family: var(--font-primary);
+  font-size: clamp(1.15rem, 1rem + 0.5vw, 1.45rem);
+  font-weight: 600;
+  color: var(--gold-200);
   direction: ltr;
   font-variant-numeric: tabular-nums;
-  font-size: clamp(1.1rem, .85rem + 1vw, 1.5rem);
-  font-weight: 600;
-  letter-spacing: .02em;
-  background: linear-gradient(100deg, #8a6a28 0%, #d4b96a 30%, #fffaf0 50%, #c9a646 78%, #8a6a28 100%);
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 1px 1px rgba(20,4,2,.5));
+  margin-top: 1.25rem;
+  text-shadow: 0 0 12px rgba(230,197,120,.4);
 }
-
-.loading-overlay__text {
-  max-width: min(84vw, 340px);
-  text-align: center;
+.intro-gate__hint {
   font-family: var(--font-primary);
-  font-size: clamp(1rem, .9rem + .5vw, 1.25rem);
-  line-height: 1.6;
-  background: linear-gradient(100deg, #8a6a28 0%, #d4b96a 20%, #f8efd2 38%, #fffaf0 46%, #e6d5a8 58%, #c9a646 76%, #8a6a28 100%);
-  background-size: 260% 100%;
-  background-position: 40% 0;
-  -webkit-background-clip: text;
-  background-clip: text;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  filter: drop-shadow(0 2px 1px rgba(20,4,2,.5)) drop-shadow(0 0 14px rgba(230,197,120,.28));
-  animation: loader-shimmer 6.5s ease-in-out infinite, loader-name-glow 4.5s ease-in-out infinite;
-}
-@keyframes loader-shimmer {
-  0%, 6%  { background-position: 100% 0; }
-  26%     { background-position: 0% 0; }
-  100%    { background-position: 0% 0; }
-}
-@keyframes loader-name-glow {
-  0%, 100% { filter: drop-shadow(0 2px 1px rgba(20,4,2,.55)) drop-shadow(0 0 10px rgba(230,197,120,.2)); }
-  50%      { filter: drop-shadow(0 2px 1px rgba(20,4,2,.55)) drop-shadow(0 0 20px rgba(230,197,120,.42)); }
-}
-
-/* ==========================================================================
-   Video gate
-   ========================================================================== */
-.video-gate {
-  position: fixed;
-  inset: 0;
-  z-index: var(--z-videogate);
-  background: #050100;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: opacity var(--dur-slow) var(--ease-luxury), visibility var(--dur-slow) var(--ease-luxury);
-}
-.video-gate.is-hidden {
-  opacity: 0;
-  visibility: hidden;
-  pointer-events: none;
-}
-.video-gate__video {
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-}
-.video-gate__play {
-  position: relative;
-  z-index: 1;
-  width: clamp(64px, 14vw, 96px);
-  aspect-ratio: 1;
-  border-radius: 50%;
-  background: rgba(255,255,255,.08);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255,255,255,.35);
-  display: grid;
-  place-items: center;
-  color: #fff;
-  opacity: 0;
-  pointer-events: none;
-  will-change: transform, opacity;
-  contain: layout style;
-  transition: transform var(--dur-fast) var(--ease-luxury), background var(--dur-fast), opacity var(--dur-medium);
-}
-.video-gate__play:hover,
-.video-gate__play:focus-visible {
-  transform: scale(1.08);
-  background: rgba(255,255,255,.16);
-}
-.video-gate__play-icon {
-  width: 38%;
-  height: 38%;
-  margin-inline-start: 8%; /* optical centering: play glyph isn't visually symmetric */
-}
-@keyframes play-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(255,255,255,.25); }
-  50% { box-shadow: 0 0 0 14px rgba(255,255,255,0); }
-}
-/* Ready to tap: loading overlay has fully resolved */
-.video-gate.is-ready .video-gate__play {
-  opacity: 1;
-  pointer-events: auto;
-  animation: play-pulse 2.4s ease-in-out infinite;
-}
-.video-gate.is-playing .video-gate__play {
-  opacity: 0;
-  pointer-events: none;
+  font-size: clamp(.85rem, .8rem + .2vw, 1rem);
+  color: var(--on-dark-dim);
+  opacity: .75;
+  margin-top: .6rem;
+  letter-spacing: .02em;
 }
 
 /* ==========================================================================
@@ -342,34 +320,34 @@ html, body { overflow-x: hidden; }
   z-index: var(--z-ambient);
   overflow: hidden;
   isolation: isolate;
-  background: linear-gradient(180deg, var(--maroon-900), var(--maroon-800) 45%, var(--maroon-900));
+  background: radial-gradient(circle at 50% 20%, #7c1a24 0%, #581219 55%, #3e0b10 100%);
 }
 .ambient-bg__blob {
   position: absolute;
   border-radius: 50%;
-  filter: blur(60px);
+  filter: blur(80px);
   mix-blend-mode: screen;
   will-change: transform;
 }
 .ambient-bg__blob--a {
-  width: 60vmax; height: 60vmax;
-  top: -20vmax; inset-inline-start: -15vmax;
-  background: radial-gradient(circle, var(--maroon-500), transparent 70%);
-  opacity: .32;
+  width: 65vmax; height: 65vmax;
+  top: -15vmax; inset-inline-start: -10vmax;
+  background: radial-gradient(circle, rgba(220, 60, 75, 0.45), transparent 70%);
+  opacity: .58;
   animation: drift-a 38s ease-in-out infinite;
 }
 .ambient-bg__blob--b {
-  width: 50vmax; height: 50vmax;
-  bottom: -18vmax; inset-inline-end: -12vmax;
-  background: radial-gradient(circle, var(--gold-500), transparent 70%);
-  opacity: .13;
+  width: 55vmax; height: 55vmax;
+  bottom: -15vmax; inset-inline-end: -10vmax;
+  background: radial-gradient(circle, rgba(212, 185, 106, 0.30), transparent 70%);
+  opacity: .38;
   animation: drift-b 44s ease-in-out infinite;
 }
 .ambient-bg__blob--c {
-  width: 40vmax; height: 40vmax;
-  top: 35%; inset-inline-start: 30%;
-  background: radial-gradient(circle, var(--maroon-600), transparent 70%);
-  opacity: .22;
+  width: 48vmax; height: 48vmax;
+  top: 35%; inset-inline-start: 25%;
+  background: radial-gradient(circle, rgba(198, 45, 58, 0.42), transparent 70%);
+  opacity: .48;
   animation: drift-c 34s ease-in-out infinite;
 }
 /* Very subtle continuous gradient breathing — a "living" atmosphere, not a moving one */
@@ -452,35 +430,158 @@ main.site.is-revealed {
 }
 
 /* ==========================================================================
-   Invitation card (first section — the supplied zhina.jpg, used as-is)
+   Invitation card (first section — daryan.jpg)
+   Fully responsive across mobile, tablet, and desktop:
+   - Top text: "بە خۆشحاڵییەوە بانگهێشتتان دەکەین بۆ ئاهەنگی مارەبڕینی دەلیا و داریان"
+   - Image: daryan.jpg with rounded corners, gold border, and soft shadow
+   - Bottom Quranic verse: Surah Ar-Rum, Ayah 21 with luxury glass panel
+   - Preserves complete card aspect ratio without cropping
    ========================================================================== */
 .invitation-card {
   position: relative;
-  width: 100vw;
-  height: 100vh;
-  height: 100dvh; /* dynamic viewport height: avoids mobile browser-chrome jump */
-  overflow: hidden;
-  background: var(--maroon-900);
-}
-/* picture generates no box of its own — the img is what fills the viewport */
-.invitation-card picture { display: contents; }
-.invitation-card__img {
-  position: absolute;
-  inset: 0;
   width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center;
+  min-height: 100vh;
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 45%, #821c25 0%, #4e0f14 100%);
+  padding: clamp(2rem, 5vh, 3.5rem) clamp(0.75rem, 3.5vw, 1.75rem);
+  text-align: center;
 }
-/* Soft cinematic vignette at the base of the hero image */
-.invitation-card::after {
+
+/* Ambient blurred warmth pooling softly behind the card from the card itself */
+.invitation-card::before {
   content: "";
   position: absolute;
-  inset-inline: 0;
-  bottom: 0;
-  height: 22vh;
-  background: linear-gradient(to top, rgba(0,0,0,.45), transparent);
+  inset: -15%;
+  width: 130%;
+  height: 130%;
+  background-image: url("assets/images/daryan-720.jpg");
+  background-size: cover;
+  background-position: center;
+  filter: blur(36px) brightness(0.60) saturate(1.3);
+  opacity: 0.9;
   pointer-events: none;
+  z-index: 0;
+}
+
+/* Top text invitation line above the image */
+.invitation-card__top {
+  position: relative;
+  z-index: 1;
+  max-width: min(92vw, 540px);
+  margin-bottom: clamp(1rem, 2.5vh, 1.8rem);
+}
+.invitation-card__top-text {
+  font-family: var(--font-primary);
+  font-size: clamp(1.15rem, 1rem + 0.75vw, 1.6rem);
+  font-weight: 400;
+  line-height: 1.8;
+  color: #fff9ea;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.75), 0 0 20px rgba(230, 197, 120, 0.35);
+  margin: 0;
+  padding-inline: 0.5rem;
+}
+
+.invitation-card picture {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.invitation-card__img {
+  position: relative;
+  display: block;
+  width: 100%;
+  max-width: min(90vw, 480px);
+  height: auto;
+  max-height: clamp(340px, 54vh, 580px);
+  object-fit: contain;
+  border-radius: clamp(12px, 3vw, 20px);
+  box-shadow:
+    0 16px 44px rgba(0, 0, 0, 0.88),
+    0 0 0 1px rgba(201, 166, 70, 0.35),
+    0 0 28px rgba(201, 166, 70, 0.15);
+  transition: transform 0.5s var(--ease-luxury), box-shadow 0.5s var(--ease-luxury);
+}
+
+@media (hover: hover) {
+  .invitation-card__img:hover {
+    transform: translateY(-3px) scale(1.01);
+    box-shadow:
+      0 20px 52px rgba(0, 0, 0, 0.95),
+      0 0 0 1px rgba(230, 197, 120, 0.55),
+      0 0 36px rgba(201, 166, 70, 0.25);
+  }
+}
+
+/* Quranic verse panel below the image */
+.invitation-card__verse {
+  position: relative;
+  z-index: 1;
+  max-width: min(94vw, 680px);
+  width: 100%;
+  margin-top: clamp(1.2rem, 3vh, 2rem);
+  padding: clamp(1.35rem, 3.2vh, 2.25rem) clamp(1.2rem, 4vw, 2.4rem);
+  background: rgba(30, 4, 3, 0.68);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(212, 185, 106, 0.35);
+  border-radius: 22px;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  text-align: center;
+}
+.invitation-card__verse-ornament {
+  width: clamp(130px, 35vw, 190px);
+  height: auto;
+  color: var(--gold-400);
+  opacity: 0.9;
+  margin: 0 auto clamp(0.5rem, 1.2vh, 0.85rem) auto;
+  display: block;
+}
+.invitation-card__bismillah {
+  font-family: "Amiri", "Traditional Arabic", "Scheherazade New", serif;
+  font-size: clamp(1.15rem, 1rem + 0.5vw, 1.45rem);
+  color: var(--gold-300);
+  letter-spacing: 0.02em;
+  margin: 0 0 clamp(0.6rem, 1.4vh, 0.95rem) 0;
+  opacity: 0.98;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.85);
+}
+.invitation-card__ayah {
+  font-family: "Amiri", "Traditional Arabic", "Scheherazade New", serif;
+  font-size: clamp(1.35rem, 1.15rem + 1vw, 2.05rem);
+  line-height: 2.2;
+  color: #fffbf2;
+  font-weight: 600;
+  font-style: normal;
+  margin: 0 0 clamp(0.65rem, 1.5vh, 1.1rem) 0;
+  padding: 0;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.9), 0 0 24px rgba(230, 197, 120, 0.3);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+}
+.invitation-card__ayah-line {
+  display: block;
+  white-space: normal;
+}
+.invitation-card__surah {
+  font-family: var(--font-primary);
+  font-size: clamp(0.95rem, 0.85rem + 0.3vw, 1.15rem);
+  color: var(--gold-400);
+  letter-spacing: 0.04em;
+  font-style: normal;
+  display: block;
+  opacity: 0.95;
+  text-shadow: 0 1px 8px rgba(0, 0, 0, 0.7);
 }
 
 /* ==========================================================================
@@ -518,22 +619,22 @@ main.site.is-revealed {
   position: relative;
   overflow: hidden;
   width: min(94vw, 640px);
-  padding: clamp(2.75rem, 7vw, 4.25rem) clamp(1.75rem, 6vw, 3.25rem);
+  padding: clamp(2.25rem, 6vw, 4.25rem) clamp(1rem, 4vw, 3.25rem);
   display: flex;
   flex-direction: column;
   align-items: center;
 
-  background: linear-gradient(160deg, rgba(255,255,255,.09), rgba(255,255,255,.02)),
-              linear-gradient(165deg, rgba(124,9,2,.42), rgba(58,5,1,.58));
-  backdrop-filter: blur(30px) saturate(150%);
-  -webkit-backdrop-filter: blur(30px) saturate(150%);
+  background: linear-gradient(160deg, rgba(255,255,255,.16), rgba(255,255,255,.04)),
+              linear-gradient(165deg, rgba(162, 34, 46, 0.42), rgba(95, 18, 26, 0.52));
+  backdrop-filter: blur(28px) saturate(160%);
+  -webkit-backdrop-filter: blur(28px) saturate(160%);
   border: 1px solid rgba(212,185,106,.5);
   border-radius: clamp(28px, 5vw, 36px);
   box-shadow:
-    inset 0 1px 0 rgba(255,255,255,.16),
-    inset 0 0 60px rgba(230,197,120,.06),
-    0 0 70px rgba(201,166,70,.10),
-    0 30px 80px rgba(0,0,0,.45);
+    inset 0 1px 0 rgba(255,255,255,.20),
+    inset 0 0 60px rgba(230,197,120,.08),
+    0 0 70px rgba(201,166,70,.14),
+    0 25px 70px rgba(0,0,0,.35);
 
   /* Layer promotion for the entrance transition itself comes from the
      shared [data-reveal] rule (will-change: opacity, transform, released
@@ -545,7 +646,7 @@ main.site.is-revealed {
   transition: opacity 1.1s var(--ease-luxury), transform 1.1s var(--ease-luxury);
 }
 @supports not (backdrop-filter: blur(1px)) {
-  .hero-card { background: rgba(40,6,4,.90); }
+  .hero-card { background: rgba(85, 16, 24, 0.92); }
 }
 .hero-card.is-revealed {
   opacity: 1;
@@ -621,27 +722,24 @@ main.site.is-revealed {
   opacity: .8;
 }
 
-/* --- Names row: one line, heart perfectly centered between them ---
-   flex-wrap is the hard guarantee against clipping/overflow: names+heart
-   scale down together (fluidly, in step with the header's real width) so
-   they fit on one line at virtually every size, and on the rare container
-   too narrow even at minimum sizes, the row reflows to a second line
-   instead of overflowing or getting clipped. Nothing here is ever
-   absolutely positioned, so nothing can crop or overlap. */
+/* --- Names row: strictly ONE line side-by-side, heart centered between them ---
+   Both names and the heart scale together seamlessly to fit side-by-side on
+   every screen width from narrow mobile (320px) up to desktop. */
 .hero-names__row {
   display: flex;
   align-items: center;
   justify-content: center;
   align-content: center;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  white-space: nowrap;
   width: 100%;
-  row-gap: clamp(.3rem, 2vh, .75rem);
-  column-gap: clamp(1rem, 3.5vw, 2.75rem);
+  max-width: 100%;
+  column-gap: clamp(0.35rem, 1.8vw, 1.6rem);
 }
 @supports (container-type: inline-size) {
   .hero-names__row {
-    row-gap: clamp(.3rem, 2cqi, .75rem);
-    column-gap: clamp(.5rem, 7cqi, 2.5rem);
+    row-gap: 0;
+    column-gap: clamp(0.35rem, 2cqi, 1.6rem);
   }
 }
 
@@ -649,8 +747,8 @@ main.site.is-revealed {
   display: inline-block;
   flex: 0 1 auto;
   font-family: "GreatVibes", "Brush Script MT", cursive;
-  font-size: clamp(2.5rem, 1.5rem + 6vw, 5.5rem);
-  line-height: 1.2;
+  font-size: clamp(1.4rem, 0.9rem + 3.2vw, 3.8rem);
+  line-height: 1.15;
   letter-spacing: .015em;
   white-space: nowrap;
   background: linear-gradient(100deg,
@@ -673,16 +771,17 @@ main.site.is-revealed {
 .hero-names__name--a { animation-delay: 1.2s, 1.2s; }
 .hero-names__name--b { animation-delay: 1.45s, 1.6s; }
 @supports (container-type: inline-size) {
-  /* Sized against the header's actual resolved width, so the name width
-     tracks the card's width exactly (including its 640px cap) instead of
-     drifting apart from it the way vw units do. */
-  .hero-names__name { font-size: clamp(1.85rem, 16.4cqi, 5.5rem); }
+  /* Sized against the header's actual resolved width so the two names fit
+     side-by-side on one single line even on small screens. */
+  .hero-names__name { font-size: clamp(1.35rem, 9.8cqi, 3.8rem); }
 }
 
 .hero-names__heart {
-  display: inline-block;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   flex: none;
-  font-size: clamp(1.35rem, .8rem + 2.6vw, 2.35rem);
+  font-size: clamp(0.95rem, 0.65rem + 1.2vw, 1.85rem);
   line-height: 1;
   background: linear-gradient(160deg, #f8efd2, #c9a646 55%, #8a6a28);
   -webkit-background-clip: text;
@@ -690,10 +789,14 @@ main.site.is-revealed {
   color: transparent;
   -webkit-text-fill-color: transparent;
   filter: drop-shadow(0 1px 1px rgba(20,4,2,.45)) drop-shadow(0 0 12px rgba(230,197,120,.3));
+  transform: translateY(-2px);
   transform-origin: center;
   animation: hero-heartbeat 5s ease-in-out infinite;
   animation-play-state: paused;
   animation-delay: 1.3s;
+}
+@supports (container-type: inline-size) {
+  .hero-names__heart { font-size: clamp(0.95rem, 5.8cqi, 1.85rem); }
 }
 .hero-card.is-revealed .hero-names__heart {
   animation-play-state: running;
@@ -859,12 +962,17 @@ main.site.is-revealed {
    Glassmorphism card — single reusable component
    ========================================================================== */
 .glass-card {
+  position: relative;
   background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
-  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(var(--glass-blur)) saturate(175%) contrast(104%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(175%) contrast(104%);
+  border: 1.2px solid rgba(255, 255, 255, 0.38);
   border-radius: var(--radius-lg);
-  box-shadow: var(--shadow-elevated), inset 0 1px 0 rgba(255,255,255,.12);
+  box-shadow:
+    var(--shadow-elevated),
+    0 0 35px rgba(201, 166, 70, 0.16),
+    inset 0 1.6px 2px rgba(255, 255, 255, 0.42),
+    inset 0 -1.6px 2px rgba(0, 0, 0, 0.30);
   contain: layout style paint;
   transition: opacity var(--dur-reveal) var(--ease-luxury),
               transform var(--dur-medium) var(--ease-luxury),
@@ -878,35 +986,141 @@ main.site.is-revealed {
 @media (hover: hover) and (pointer: fine) {
   .glass-card:hover {
     transform: translateY(-4px);
-    border-color: var(--gold-400);
-    box-shadow: var(--shadow-gold-glow), var(--shadow-elevated);
+    border-color: rgba(255, 255, 255, 0.75);
+    box-shadow:
+      var(--shadow-gold-glow),
+      var(--shadow-elevated),
+      inset 0 1.8px 2px rgba(255, 255, 255, 0.6);
   }
 }
 .glass-section .section__title { margin-bottom: clamp(1.25rem, 3vw, 2rem); }
 
-/* --- Buttons --- */
+/* --- Liquid Glass Keyframe Refractions --- */
+@keyframes liquid-glass-sweep {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -100% 0;
+  }
+}
+
+@keyframes liquid-pulse-glow {
+  0%, 100% {
+    box-shadow: 0 12px 35px -6px rgba(0, 0, 0, 0.45),
+                0 0 28px rgba(212, 185, 106, 0.40),
+                inset 0 2px 2px rgba(255, 255, 255, 0.88),
+                inset 0 -2px 3px rgba(0, 0, 0, 0.35);
+  }
+  50% {
+    box-shadow: 0 16px 45px -4px rgba(0, 0, 0, 0.55),
+                0 0 45px rgba(235, 205, 125, 0.65),
+                inset 0 2.2px 2.5px rgba(255, 255, 255, 0.98),
+                inset 0 -2px 3px rgba(0, 0, 0, 0.35);
+  }
+}
+
+/* --- Buttons (Ultra-Luxury Liquid Glass) --- */
 .btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  padding: .9em 2.2em;
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  padding: .95em 2.6em;
   border-radius: var(--radius-pill);
-  font-size: 1rem;
-  transition: transform var(--dur-fast) var(--ease-luxury), box-shadow var(--dur-fast) var(--ease-luxury);
+  font-family: var(--font-primary);
+  font-size: 1.05rem;
+  text-decoration: none;
+  cursor: pointer;
+  transition: transform var(--dur-medium) var(--ease-luxury),
+              box-shadow var(--dur-medium) var(--ease-luxury),
+              border-color var(--dur-medium) var(--ease-luxury),
+              background var(--dur-medium) var(--ease-luxury);
+  will-change: transform;
 }
+
+.btn span {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  letter-spacing: .02em;
+}
+
 .btn--gold {
-  background: linear-gradient(135deg, var(--gold-400), var(--gold-500));
-  color: var(--ink-900);
-  box-shadow: var(--shadow-soft);
+  background: linear-gradient(135deg,
+    rgba(255, 248, 230, 0.84) 0%,
+    rgba(228, 192, 110, 0.60) 46%,
+    rgba(172, 126, 44, 0.70) 100%);
+  backdrop-filter: blur(24px) saturate(210%);
+  -webkit-backdrop-filter: blur(24px) saturate(210%);
+  border: 1.2px solid rgba(255, 255, 255, 0.68);
+  color: #240706;
+  font-weight: 600;
+  box-shadow:
+    0 12px 34px -4px rgba(0, 0, 0, 0.45),
+    0 0 28px rgba(212, 185, 106, 0.38),
+    inset 0 1.8px 2px rgba(255, 255, 255, 0.88),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.32);
 }
-.btn--gold:hover, .btn--gold:focus-visible {
-  transform: translateY(-3px);
-  box-shadow: var(--shadow-gold-glow), var(--shadow-elevated);
+
+/* Liquid convex surface meniscus highlight */
+.btn--gold::before {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 7%;
+  right: 7%;
+  height: 48%;
+  border-radius: 999px 999px 65% 65% / 999px 999px 28% 28%;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.85) 0%,
+    rgba(255, 255, 255, 0.22) 65%,
+    rgba(255, 255, 255, 0) 100%);
+  pointer-events: none;
+  z-index: 1;
 }
+
+/* Fluid liquid shimmer sweep */
+.btn--gold::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(105deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.52) 50%,
+    transparent 65%);
+  background-size: 200% 100%;
+  animation: liquid-glass-sweep 4.8s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  z-index: 1;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .btn--gold:hover, .btn--gold:focus-visible {
+    transform: translateY(-4px) scale(1.025);
+    border-color: #ffffff;
+    box-shadow:
+      0 18px 44px -4px rgba(0, 0, 0, 0.52),
+      0 0 42px rgba(235, 205, 125, 0.65),
+      inset 0 2px 2.5px rgba(255, 255, 255, 0.98),
+      inset 0 -2px 3px rgba(0, 0, 0, 0.35);
+  }
+}
+
 .btn--gold:active {
-  transform: translateY(-1px) scale(.97);
-  box-shadow: var(--shadow-soft);
-  transition-duration: 120ms;
+  transform: translateY(-1px) scale(.96);
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.4),
+    0 0 20px rgba(212, 185, 106, 0.3),
+    inset 0 1.5px 1.5px rgba(255, 255, 255, 0.75),
+    inset 0 -1.5px 2px rgba(0, 0, 0, 0.42);
+  transition-duration: 100ms;
 }
 
 /* ==========================================================================
@@ -929,26 +1143,63 @@ main.site.is-revealed {
   align-items: center;
   justify-content: center;
   gap: clamp(.35rem, 1.3vw, .7rem);
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
 
-  /* Subtle transparent-maroon glass, thin gold edge, premium lift — overrides .glass-card's neutral tint */
-  background: linear-gradient(155deg, rgba(124,9,2,.30), rgba(58,5,1,.12));
-  border: 1px solid rgba(212,185,106,.42);
+  /* Liquid Glass Tile Styling */
+  background: linear-gradient(155deg,
+    rgba(255, 255, 255, 0.20) 0%,
+    rgba(165, 34, 46, 0.32) 45%,
+    rgba(82, 15, 24, 0.45) 100%);
+  backdrop-filter: blur(24px) saturate(190%);
+  -webkit-backdrop-filter: blur(24px) saturate(190%);
+  border: 1.2px solid rgba(255, 255, 255, 0.42);
   border-radius: clamp(20px, 3.6vw, 30px);
-  box-shadow: var(--shadow-elevated), inset 0 1px 0 rgba(255,255,255,.10);
+  box-shadow:
+    0 14px 34px -4px rgba(0, 0, 0, 0.42),
+    0 0 26px rgba(212, 185, 106, 0.22),
+    inset 0 1.8px 2px rgba(255, 255, 255, 0.72),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.35);
 
   transition: opacity var(--dur-reveal) var(--ease-luxury),
               transform var(--dur-medium) var(--ease-luxury),
               box-shadow var(--dur-medium) var(--ease-luxury),
               border-color var(--dur-medium) var(--ease-luxury);
 }
+
+/* Subtle top rim specular highlight on countdown tile */
+.countdown__tile::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 15%;
+  right: 15%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.6), transparent);
+  pointer-events: none;
+  z-index: 1;
+}
+
+.countdown__num,
+.countdown__digit,
+.countdown__tile small {
+  position: relative;
+  z-index: 2;
+}
+
 @supports not (backdrop-filter: blur(1px)) {
   .countdown__tile { background: rgba(58,5,1,.90); }
 }
 @media (hover: hover) and (pointer: fine) {
   .countdown__tile:hover {
     transform: translateY(-6px);
-    border-color: var(--gold-400);
-    box-shadow: var(--shadow-gold-glow), var(--shadow-elevated);
+    border-color: rgba(255, 255, 255, 0.78);
+    box-shadow:
+      0 20px 42px -4px rgba(0, 0, 0, 0.52),
+      0 0 34px rgba(230, 197, 120, 0.45),
+      inset 0 2px 2.5px rgba(255, 255, 255, 0.85),
+      inset 0 -2px 3px rgba(0, 0, 0, 0.35);
   }
 }
 .countdown__num {
@@ -1206,15 +1457,14 @@ main.site.is-revealed {
   flex-direction: column;
   align-items: center;
 
-  /* Glass sheen over an explicit maroon-700 (#7C0902) wash — the brand color reads
-     through the blur instead of the neutral glass tint every other card uses */
-  background: linear-gradient(155deg, rgba(255,255,255,.09), rgba(255,255,255,.02)),
-              linear-gradient(160deg, rgba(124,9,2,.55), rgba(58,5,1,.72));
-  backdrop-filter: blur(var(--glass-blur)) saturate(140%);
-  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(140%);
-  border: 1px solid rgba(212,185,106,.5);
+  /* Glass sheen over an explicit maroon wash with Liquid Glass refraction */
+  background: linear-gradient(155deg, rgba(255,255,255,.18), rgba(255,255,255,.05)),
+              linear-gradient(160deg, rgba(162,34,46,.45), rgba(95,18,26,.58));
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(180%);
+  border: 1.2px solid rgba(255, 255, 255, 0.42);
   border-radius: clamp(24px, 4vw, 32px);
-  box-shadow: var(--shadow-elevated), 0 0 50px rgba(201,166,70,.14), inset 0 1px 0 rgba(255,255,255,.14);
+  box-shadow: var(--shadow-elevated), 0 0 50px rgba(201,166,70,.22), inset 0 1.8px 2px rgba(255,255,255,.45), inset 0 -2px 3px rgba(0,0,0,.32);
   contain: layout style paint;
   transition: opacity var(--dur-reveal) var(--ease-luxury),
               transform var(--dur-medium) var(--ease-luxury),
@@ -1222,13 +1472,13 @@ main.site.is-revealed {
               border-color var(--dur-medium) var(--ease-luxury);
 }
 @supports not (backdrop-filter: blur(1px)) {
-  .venue-card { background: rgba(40,6,4,.88); }
+  .venue-card { background: rgba(85,16,24,.90); }
 }
 @media (hover: hover) and (pointer: fine) {
   .venue-card:hover {
     transform: translateY(-4px);
-    border-color: var(--gold-400);
-    box-shadow: var(--shadow-gold-glow), var(--shadow-elevated);
+    border-color: rgba(255, 255, 255, 0.78);
+    box-shadow: var(--shadow-gold-glow), var(--shadow-elevated), inset 0 2px 2.5px rgba(255,255,255,.6);
   }
 }
 
@@ -1286,22 +1536,24 @@ main.site.is-revealed {
   margin-bottom: .6rem;
 }
 .venue-card__venue {
-  font-size: clamp(1.3rem, 3vw, 1.75rem);
-  color: var(--cream-050);
+  font-size: clamp(1.4rem, 1.1rem + 1.2vw, 2.1rem);
+  color: var(--gold-200);
+  font-weight: 400;
   letter-spacing: .02em;
+  text-shadow: 0 0 16px rgba(230,197,120,.3);
 }
 .venue-card__city {
-  font-size: .95rem;
+  font-size: 1.05rem;
   color: var(--gold-300);
-  opacity: .85;
+  opacity: .9;
   margin-top: .2rem;
 }
 .venue-card__desc {
-  max-width: 40ch;
-  font-size: .95rem;
+  max-width: 44ch;
+  font-size: clamp(.95rem, .85rem + .3vw, 1.1rem);
   line-height: 1.9;
   color: var(--on-dark);
-  opacity: .8;
+  opacity: .88;
   margin-top: clamp(1rem, 3vw, 1.5rem);
   margin-bottom: clamp(1.75rem, 4vw, 2.25rem);
 }
@@ -1310,11 +1562,15 @@ main.site.is-revealed {
 .venue-card__map {
   position: relative;
   width: 100%;
-  aspect-ratio: 4 / 3;
-  border-radius: var(--radius-lg);
+  aspect-ratio: 16 / 11;
+  min-height: 260px;
+  border-radius: clamp(18px, 4vw, 26px);
   overflow: hidden;
-  box-shadow: 0 8px 30px rgba(0,0,0,.5), inset 0 0 0 1px rgba(212,185,106,.3);
-  /* Isolate the Maps iframe's own rendering/scripting from the rest of the page. */
+  border: 1px solid rgba(212,185,106,.5);
+  box-shadow:
+    0 12px 36px rgba(0,0,0,.55),
+    0 0 28px rgba(201,166,70,.14),
+    inset 0 0 0 1px rgba(255,255,255,.08);
   contain: content;
 }
 @media (min-width: 40rem) {
@@ -1326,9 +1582,9 @@ main.site.is-revealed {
   width: 100%;
   height: 100%;
   border: 0;
-  filter: saturate(1.05) contrast(1.02);
-  transform: scale(1.16);
-  transition: transform 1.4s var(--ease-luxury);
+  filter: contrast(1.02) saturate(1.06);
+  transform: scale(1.06);
+  transition: transform 1.2s var(--ease-luxury);
 }
 /* Softly zooms in as the card reveals — .venue-card itself carries [data-reveal] */
 .venue-card.is-revealed .venue-card__iframe { transform: scale(1); }
@@ -1529,6 +1785,199 @@ main.site.is-revealed {
   .style-duo { flex-wrap: wrap; }
   .style-duo__card { flex: 1 1 100%; }
   .style-duo__name { white-space: normal; }
+}
+
+/* ==========================================================================
+   Time card — single luxury highlight for 5:00 PM start time
+   ========================================================================== */
+.time-section {
+  display: flex;
+  justify-content: center;
+  padding-block: clamp(3rem, 7vh, 5rem);
+  padding-inline: var(--section-pad-x);
+}
+.time-card {
+  position: relative;
+  overflow: hidden;
+  width: min(92vw, 560px);
+  margin-inline: auto;
+  padding: clamp(2rem, 5vw, 3rem) clamp(1.25rem, 4.5vw, 2.5rem);
+  border-radius: 20px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: linear-gradient(160deg, rgba(255,255,255,.05), rgba(255,255,255,.015) 60%, rgba(201,166,70,.04));
+  border: 1px solid rgba(212,185,106,.32);
+  box-shadow: 0 20px 50px rgba(0,0,0,.45), 0 0 30px rgba(201,166,70,.1);
+}
+.time-card__blooms {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+}
+.time-card__bloom {
+  position: absolute;
+  width: clamp(52px, 11vw, 76px);
+  height: clamp(52px, 11vw, 76px);
+  opacity: 0.75;
+}
+.time-card__bloom--tl { top: -14px; left: -14px; transform: rotate(-25deg); }
+.time-card__bloom--tr { top: -14px; right: -14px; transform: rotate(25deg) scaleX(-1); }
+
+.time-card__icon-wrap {
+  position: relative;
+  overflow: hidden;
+  z-index: 1;
+  width: clamp(52px, 12vw, 68px);
+  height: clamp(52px, 12vw, 68px);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at 35% 25%, rgba(255, 248, 230, 0.45), rgba(201, 166, 70, 0.22) 60%, rgba(138, 106, 40, 0.28) 100%);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1.2px solid rgba(255, 255, 255, 0.65);
+  box-shadow:
+    0 10px 28px rgba(0, 0, 0, 0.38),
+    0 0 24px rgba(212, 185, 106, 0.35),
+    inset 0 1.8px 2px rgba(255, 255, 255, 0.85),
+    inset 0 -1.8px 2px rgba(0, 0, 0, 0.35);
+  margin-bottom: 0.75rem;
+}
+.time-card__icon-wrap::before {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 15%;
+  right: 15%;
+  height: 45%;
+  border-radius: 50% 50% 45% 45% / 60% 60% 30% 30%;
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.1) 75%, transparent 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+.time-card__icon {
+  position: relative;
+  z-index: 2;
+  width: clamp(26px, 6vw, 34px);
+  height: clamp(26px, 6vw, 34px);
+  color: var(--gold-200);
+}
+.time-card__title {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-primary);
+  font-size: clamp(1.4rem, 1.1rem + 1.2vw, 2rem);
+  color: var(--gold-100);
+  margin: 0.25rem 0 0.85rem 0;
+  font-weight: 400;
+}
+.time-card__time-badge {
+  position: relative;
+  overflow: hidden;
+  isolation: isolate;
+  z-index: 1;
+  display: inline-flex;
+  align-items: baseline;
+  justify-content: center;
+  gap: 8px;
+  padding: clamp(0.55rem, 1.6vh, 0.85rem) clamp(1.6rem, 5vw, 3rem);
+  border-radius: 999px;
+  background: linear-gradient(140deg,
+    rgba(255, 255, 255, 0.24) 0%,
+    rgba(212, 185, 106, 0.28) 45%,
+    rgba(145, 30, 42, 0.38) 100%);
+  backdrop-filter: blur(24px) saturate(200%);
+  -webkit-backdrop-filter: blur(24px) saturate(200%);
+  border: 1.2px solid rgba(255, 255, 255, 0.58);
+  box-shadow:
+    0 12px 32px rgba(0, 0, 0, 0.38),
+    0 0 28px rgba(212, 185, 106, 0.3),
+    inset 0 1.8px 2px rgba(255, 255, 255, 0.85),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.35);
+  margin: 0.5rem 0 1rem 0;
+}
+.time-card__time-badge::before {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 6%;
+  right: 6%;
+  height: 48%;
+  border-radius: 999px 999px 65% 65% / 999px 999px 28% 28%;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.72) 0%,
+    rgba(255, 255, 255, 0.15) 65%,
+    rgba(255, 255, 255, 0) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+.time-card__time-badge::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(105deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.38) 50%,
+    transparent 65%);
+  background-size: 200% 100%;
+  animation: liquid-glass-sweep 5.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  z-index: 1;
+}
+.time-card__time-badge > * {
+  position: relative;
+  z-index: 2;
+}
+.time-card__time-prefix {
+  font-family: var(--font-primary);
+  font-size: clamp(1.1rem, 0.95rem + 0.5vw, 1.4rem);
+  color: var(--gold-300);
+  font-weight: 400;
+}
+.time-card__time-value {
+  font-family: var(--font-primary), -apple-system, sans-serif;
+  font-size: clamp(2.4rem, 1.8rem + 2.5vw, 3.6rem);
+  font-weight: 700;
+  color: #fff8e8;
+  text-shadow: 0 2px 16px rgba(0,0,0,.7);
+  line-height: 1;
+}
+.time-card__time-unit {
+  font-family: var(--font-primary);
+  font-size: clamp(1.15rem, 1rem + 0.6vw, 1.5rem);
+  color: var(--gold-300);
+  font-weight: 400;
+}
+.time-card__desc {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-primary);
+  font-size: clamp(1.1rem, 0.95rem + 0.5vw, 1.4rem);
+  color: #fff;
+  font-weight: 400;
+  line-height: 1.9;
+  margin: 0.25rem 0 0.85rem 0;
+}
+.time-card__divider {
+  width: clamp(140px, 40vw, 200px);
+  margin: 0.5rem auto 0.85rem auto;
+  color: var(--gold-400);
+  opacity: 0.75;
+}
+.time-card__note {
+  position: relative;
+  z-index: 1;
+  font-family: var(--font-primary);
+  font-size: clamp(0.95rem, 0.85rem + 0.3vw, 1.15rem);
+  color: var(--on-dark-dim);
+  line-height: 1.8;
+  margin: 0;
 }
 
 /* ==========================================================================
@@ -1914,37 +2363,98 @@ main.site.is-revealed {
 
 .ending-cta-btn {
   position: relative;
-  padding: 1.1em 3.4em;
+  overflow: hidden;
+  isolation: isolate;
+  padding: 1.15em 3.6em;
   font-family: var(--font-primary);
-  font-size: clamp(1.05rem, .95rem + .5vw, 1.3rem);
+  font-size: clamp(1.1rem, 1rem + .5vw, 1.35rem);
+  font-weight: 600;
   letter-spacing: .02em;
-  color: var(--ink-900);
-  background: linear-gradient(135deg, rgba(243,233,206,.92), rgba(201,166,70,.82));
-  backdrop-filter: blur(14px) saturate(160%);
-  -webkit-backdrop-filter: blur(14px) saturate(160%);
-  border: 1px solid rgba(255,255,255,.55);
+  color: #230806;
+  background: linear-gradient(135deg,
+    rgba(255, 248, 230, 0.85) 0%,
+    rgba(230, 195, 115, 0.62) 46%,
+    rgba(175, 130, 48, 0.72) 100%);
+  backdrop-filter: blur(26px) saturate(210%);
+  -webkit-backdrop-filter: blur(26px) saturate(210%);
+  border: 1.5px solid rgba(255, 255, 255, 0.75);
   border-radius: var(--radius-pill);
-  box-shadow: var(--shadow-gold-glow), var(--shadow-elevated), inset 0 1px 0 rgba(255,255,255,.5);
+  box-shadow:
+    0 14px 38px -6px rgba(0, 0, 0, 0.45),
+    0 0 32px rgba(212, 185, 106, 0.45),
+    inset 0 2px 2.5px rgba(255, 255, 255, 0.9),
+    inset 0 -2.5px 3.5px rgba(0, 0, 0, 0.32),
+    inset 0 0 16px rgba(255, 255, 255, 0.25);
   cursor: pointer;
-  will-change: transform;
+  will-change: transform, box-shadow;
   contain: layout style;
   transition: transform var(--dur-medium) var(--ease-luxury),
               box-shadow var(--dur-medium) var(--ease-luxury),
+              border-color var(--dur-medium) var(--ease-luxury),
               opacity var(--dur-medium) var(--ease-soft);
-  animation: ending-btn-glow 3.2s ease-in-out infinite;
+  animation: liquid-pulse-glow 3.6s ease-in-out infinite;
 }
-@keyframes ending-btn-glow {
-  0%, 100% { box-shadow: var(--shadow-gold-glow), var(--shadow-elevated), inset 0 1px 0 rgba(255,255,255,.5); }
-  50%      { box-shadow: 0 0 42px rgba(201,166,70,.55), var(--shadow-elevated), inset 0 1px 0 rgba(255,255,255,.5); }
+
+.ending-cta-btn span {
+  position: relative;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
+
+/* Liquid convex surface meniscus highlight */
+.ending-cta-btn::before {
+  content: '';
+  position: absolute;
+  top: 1px;
+  left: 6%;
+  right: 6%;
+  height: 48%;
+  border-radius: 999px 999px 65% 65% / 999px 999px 28% 28%;
+  background: linear-gradient(180deg,
+    rgba(255, 255, 255, 0.85) 0%,
+    rgba(255, 255, 255, 0.25) 65%,
+    rgba(255, 255, 255, 0) 100%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Fluid liquid shimmer sweep */
+.ending-cta-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(105deg,
+    transparent 35%,
+    rgba(255, 255, 255, 0.55) 50%,
+    transparent 65%);
+  background-size: 200% 100%;
+  animation: liquid-glass-sweep 4.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  pointer-events: none;
+  mix-blend-mode: overlay;
+  z-index: 1;
+}
+
 @media (hover: hover) and (pointer: fine) {
   .ending-cta-btn:hover, .ending-cta-btn:focus-visible {
     transform: translateY(-5px) scale(1.035);
-    box-shadow: 0 0 46px rgba(201,166,70,.6), var(--shadow-elevated), inset 0 1px 0 rgba(255,255,255,.5);
+    border-color: #ffffff;
+    box-shadow:
+      0 20px 48px -4px rgba(0, 0, 0, 0.55),
+      0 0 48px rgba(235, 205, 130, 0.65),
+      inset 0 2.5px 3px rgba(255, 255, 255, 1),
+      inset 0 -2.5px 3.5px rgba(0, 0, 0, 0.35);
   }
 }
 .ending-cta-btn:active {
   transform: translateY(-1px) scale(.94);
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.4),
+    0 0 22px rgba(212, 185, 106, 0.35),
+    inset 0 1.5px 2px rgba(255, 255, 255, 0.75),
+    inset 0 -2px 3px rgba(0, 0, 0, 0.45);
   transition-duration: 120ms;
 }
 .ending-cta-btn.is-fading {
@@ -1964,44 +2474,82 @@ main.site.is-revealed {
    made the glass materialize a beat after the text). Hidden from assistive
    tech via `aria-hidden` (toggled in script.js) rather than CSS visibility,
    since visibility:hidden would stop the layer from being painted/cached. */
+/* Full page blur when ending modal is active */
+body.has-ending-modal #main {
+  filter: blur(14px) brightness(0.65);
+  transition: filter 0.5s var(--ease-luxury);
+  pointer-events: none;
+  user-select: none;
+}
+
 .ending-message {
   position: fixed;
   inset: 0;
-  z-index: var(--z-message);
+  z-index: 9999;
   display: grid;
   place-items: center;
-  padding: var(--space-md);
+  padding: clamp(1rem, 4vw, 2.5rem);
+  background: rgba(35, 6, 10, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   opacity: 0;
   pointer-events: none;
-  will-change: opacity;
-  transition: opacity .8s var(--ease-luxury);
+  cursor: pointer;
+  transition: opacity .45s var(--ease-luxury);
 }
 .ending-message.is-visible {
   opacity: 1;
   pointer-events: auto;
 }
 .ending-message__panel {
-  max-width: clamp(18rem, 70vw, 34rem);
-  padding: clamp(1.75rem, 3vw + 1rem, 3rem) clamp(1.5rem, 4vw, 2.75rem);
+  position: relative;
+  width: min(92vw, 440px);
+  padding: clamp(2.25rem, 6vw, 3.25rem) clamp(1.5rem, 5vw, 2.5rem);
   text-align: center;
-  background: linear-gradient(155deg, rgba(201,166,70,.16), rgba(58,5,1,.55));
-  backdrop-filter: blur(26px) saturate(160%);
-  -webkit-backdrop-filter: blur(26px) saturate(160%);
-  border: 1px solid var(--gold-400);
-  border-radius: var(--radius-lg);
-  box-shadow: 0 0 50px rgba(201,166,70,.35), var(--shadow-elevated), inset 0 1px 0 rgba(255,255,255,.14);
-  will-change: transform, backdrop-filter;
-  contain: layout style;
-  transform: scale(.95);
-  transition: transform .8s var(--ease-luxury);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  background: linear-gradient(165deg, rgba(125, 25, 35, 0.96), rgba(70, 12, 18, 0.98));
+  border: 1.5px solid var(--gold-400);
+  border-radius: clamp(24px, 5vw, 32px);
+  box-shadow:
+    0 0 50px rgba(201, 166, 70, 0.45),
+    0 25px 60px rgba(0, 0, 0, 0.65),
+    inset 0 1px 0 rgba(255, 255, 255, 0.28);
+  transform: scale(.92);
+  transition: transform .45s var(--ease-luxury);
+  cursor: default;
 }
-.ending-message.is-visible .ending-message__panel { transform: scale(1); }
+.ending-message.is-visible .ending-message__panel {
+  transform: scale(1);
+}
+.ending-message__ornament {
+  width: min(180px, 65%);
+  height: 26px;
+  color: var(--gold-400);
+  opacity: 0.9;
+}
+.ending-message__ornament--bottom {
+  margin-top: 0.5rem;
+}
+.ending-message__title {
+  margin: 0.35rem 0 0.15rem 0;
+  font-family: var(--font-primary);
+  font-size: clamp(2rem, 1.6rem + 2vw, 2.9rem);
+  font-weight: 700;
+  line-height: 1.25;
+  color: #fffbf0;
+  text-shadow: 0 2px 14px rgba(0, 0, 0, 0.7), 0 0 24px rgba(230, 197, 120, 0.5);
+}
 .ending-message__text {
   margin: 0;
   font-family: var(--font-primary);
-  font-size: clamp(1.15rem, 1rem + 1vw, 1.6rem);
-  line-height: 1.7;
+  font-size: clamp(1.35rem, 1.15rem + 1vw, 1.95rem);
+  font-weight: 500;
+  line-height: 1.5;
   color: var(--gold-200);
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.6), 0 0 18px rgba(201, 166, 70, 0.35);
 }
 
 /* --- One-shot falling flower (same #icon-rose asset as .mini-rose, but a
@@ -2024,42 +2572,6 @@ main.site.is-revealed {
   45%  { transform: translate(var(--ef-x1, 15px), 45vh) rotate(calc(var(--ef-r, 140deg) * .45)) scale(1); }
   80%  { opacity: var(--ef-op, .85); }
   100% { transform: translate(var(--ef-x2, -15px), 118vh) rotate(var(--ef-r, 140deg)) scale(.92); opacity: 0; }
-}
-
-/* ==========================================================================
-   Floating music toggle
-   ========================================================================== */
-.music-toggle {
-  position: fixed;
-  bottom: 1.25rem;
-  /* Intentional PHYSICAL left: fixed viewport-corner widget, kept clear of
-     the drifting rose and wind petals regardless of text direction. */
-  left: 1.25rem;
-  z-index: var(--z-music);
-  width: 52px; height: 52px;
-  border-radius: 50%;
-  background: var(--glass-bg);
-  backdrop-filter: blur(var(--glass-blur));
-  -webkit-backdrop-filter: blur(var(--glass-blur));
-  border: 1px solid var(--glass-border);
-  display: grid;
-  place-items: center;
-  color: var(--gold-300);
-  box-shadow: var(--shadow-soft);
-  will-change: transform;
-  contain: layout style;
-  transition: transform var(--dur-fast) var(--ease-luxury), box-shadow var(--dur-medium) var(--ease-luxury);
-}
-.music-toggle:hover, .music-toggle:focus-visible { transform: scale(1.08); }
-.music-toggle:active { transform: scale(.94); transition-duration: 120ms; }
-.music-toggle__icon { width: 20px; height: 20px; }
-/* Subtle pulsing halo while music is playing; stops the instant it's paused */
-.music-toggle.is-playing {
-  animation: music-pulse 2.6s ease-in-out infinite;
-}
-@keyframes music-pulse {
-  0%, 100% { box-shadow: var(--shadow-soft), 0 0 0 0 rgba(201,166,70,.35); }
-  50%      { box-shadow: var(--shadow-soft), 0 0 0 12px rgba(201,166,70,0); }
 }
 
 /* ==========================================================================
