@@ -136,7 +136,6 @@ const RevealAndPetalBurst = {
     if (!main) return;
     main.hidden = false;
     requestAnimationFrame(() => main.classList.add('is-revealed'));
-    main.focus({ preventScroll: true });
 
     ScrollRevealEngine.init();
     CountdownEngine.init();
@@ -157,7 +156,7 @@ const RevealAndPetalBurst = {
     for (let i = 0; i < count; i++) {
       const petal = document.createElement('span');
       petal.className = 'petal';
-      petal.style.setProperty('--x', (Math.random() * 100) + '%');
+      petal.style.setProperty('--x', (3 + Math.random() * 92) + '%');
       petal.style.setProperty('--rot', (Math.random() * 360) + 'deg');
       petal.style.setProperty('--dur', (4 + Math.random() * 1) + 's');
       petal.style.setProperty('--delay', (Math.random() * 0.6) + 's');
@@ -183,7 +182,7 @@ const ScrollRevealEngine = {
           observer.unobserve(entry.target);
         }
       });
-    }, { threshold: 0.2, rootMargin: '0px 0px -10% 0px' });
+    }, { threshold: 0.04, rootMargin: '60px 0px 60px 0px' });
     nodes.forEach((n) => observer.observe(n));
   }
 };
@@ -222,34 +221,14 @@ const CountdownEngine = {
         if (digits[i].textContent === ch) return;
         digits[i].textContent = ch;
         digits[i].classList.remove('is-flipping');
-        // Double-rAF re-add instead of forcing a synchronous layout flush
-        // (void offsetWidth): the first rAF waits for the "removed" state to
-        // actually render, the second re-adds the class on the frame after,
-        // so the keyframes reliably restart without ever blocking the main
-        // thread on a synchronous style/layout read.
         requestAnimationFrame(() => {
           requestAnimationFrame(() => digits[i].classList.add('is-flipping'));
         });
       });
     };
 
-    // Fires the shared golden pulse (quote card glow + border shimmer + tile
-    // illumination) once per tick, in lockstep with the seconds changing —
-    // same double-rAF remove/re-add trick as the digit flip, so the CSS
-    // keyframes restart cleanly on every call instead of only running once,
-    // with no forced reflow.
-    const unit = document.querySelector('.countdown-unit');
-    const pulseUnit = () => {
-      if (!unit) return;
-      unit.classList.remove('is-pulsing');
-      requestAnimationFrame(() => {
-        requestAnimationFrame(() => unit.classList.add('is-pulsing'));
-      });
-    };
-
     const tick = () => {
       const diff = this.EVENT_DATE.getTime() - Date.now();
-      pulseUnit();
       if (diff <= 0) {
         setTile(tiles.d, '0');
         setTile(tiles.h, '00');
@@ -263,8 +242,7 @@ const CountdownEngine = {
       const hours = Math.floor((totalSeconds % 86400) / 3600);
       const minutes = Math.floor((totalSeconds % 3600) / 60);
       const seconds = totalSeconds % 60;
-      // padStart on plain Latin digits, deterministic — never toLocaleString()/Intl,
-      // which can silently regionalize in unpredictable ways.
+
       setTile(tiles.d, String(days));
       setTile(tiles.h, String(hours).padStart(2, '0'));
       setTile(tiles.m, String(minutes).padStart(2, '0'));
@@ -277,7 +255,7 @@ const CountdownEngine = {
 
 /* --- November 2026 calendar grid, computed (never hand-hardcoded) --- */
 const CalendarGenerator = {
-  WEEKDAYS: ['یەکشەممە', 'دووشەممە', 'سێشەممە', 'چوارشەممە', 'پێنجشەممە', 'هەینی', 'شەممە'],
+  WEEKDAYS: ['یەکشەم', 'دووشەم', 'سێشەم', 'چوارشەم', 'پێنجشەم', 'هەینی', 'شەممە'],
   TARGET_DAY: 21,
 
   init() {
@@ -482,7 +460,7 @@ const EndingCelebration = {
   spawnPetal() {
     const petal = document.createElement('span');
     petal.className = 'petal';
-    petal.style.setProperty('--x', (Math.random() * 100) + '%');
+    petal.style.setProperty('--x', (3 + Math.random() * 92) + '%');
     petal.style.setProperty('--rot', (Math.random() * 360) + 'deg');
     petal.style.setProperty('--dur', (2.8 + Math.random() * 1.6) + 's');
     petal.style.setProperty('--delay', (Math.random() * 0.3) + 's');
