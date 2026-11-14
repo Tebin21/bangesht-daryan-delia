@@ -96,7 +96,7 @@ const server = http.createServer((req, res) => {
 
 server.listen(PORT, HOST, () => {
   console.log(`\n======================================================`);
-  console.log(`✨ بانگهێشتنامەی داریان و دەلیا بە سەرکەوتوویی کار دەکات!`);
+  console.log(`✨ بانگهێشتنامەی داریان و دالیا بە سەرکەوتوویی کار دەکات!`);
   console.log(`💻 Local URL:   http://localhost:${PORT}`);
   console.log(`📱 Mobile/Wi-Fi: http://192.168.1.95:${PORT}`);
   console.log(`======================================================\n`);

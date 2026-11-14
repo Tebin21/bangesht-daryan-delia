@@ -1,7 +1,7 @@
 'use strict';
 
 /* ==========================================================================
-   Luxury Kurdish Engagement Invitation — داریان ❤ دەلیا
+   Luxury Kurdish Engagement Invitation — داریان ❤ دالیا
    Sequencing: ReducedMotionGuard -> AssetGate -> VideoGateController ->
    RevealAndPetalBurst -> (ScrollRevealEngine + CountdownEngine +
    CalendarGenerator start together). CustomCursor and MusicPlayer init
